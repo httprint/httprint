@@ -33,6 +33,7 @@ import tornado.web
 from tornado import gen, escape
 
 import configparser
+import PyPDF2
 
 API_VERSION = '1.0'
 QUEUE_DIR = 'queue'
@@ -287,13 +288,18 @@ class UploadHandler(BaseHandler):
         failure = False
         if self.cfg.check_pdf_pages or self.cfg.pdf_only:
             try:
-                p = subprocess.Popen(['pdfinfo', pname], stdout=subprocess.PIPE)
-                out, _ = p.communicate()
-                if p.returncode != 0 and self.cfg.pdf_only:
-                    self.build_error('the uploaded file does not seem to be a PDF')
-                    failure = True
-                out = out.decode('utf-8', errors='ignore')
-                pages = int(re_pages.findall(out)[0])
+                # p = subprocess.Popen(['pdfinfo', pname], stdout=subprocess.PIPE)
+                # out, _ = p.communicate()
+                # if p.returncode != 0 and self.cfg.pdf_only:
+                #     self.build_error('the uploaded file does not seem to be a PDF')
+                #     failure = True
+                # out = out.decode('utf-8', errors='ignore')
+                # pages = int(re_pages.findall(out)[0])
+
+                #sostituito il comando pdfinfo con una libreria di python
+                with open(pname, 'rb') as f:
+                    pages = PyPDF2.PdfFileReader(f).numPages
+
                 if pages * copies > self.cfg.max_pages and self.cfg.check_pdf_pages and not failure:
                     self.build_error('too many pages to print (%d)' % (pages * copies))
                     failure = True
