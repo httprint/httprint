@@ -187,7 +187,9 @@ class PrintHandler(BaseHandler):
 class QueryHandler(BaseHandler):
     """File print handler."""
     @gen.coroutine
-    def post(self, code=None, ppd=None):
+    def get(self, code=None, ppd=None):
+        logging.info(self.request.arguments)
+        
         if not code:
             self.build_error("empty code")
             return
@@ -202,8 +204,19 @@ class QueryHandler(BaseHandler):
         config = configparser.ConfigParser()
         config.read(files[0] + '.info')
         printconf = config['print']
-        self.build_success(printconf['name'])
+        self.build_success(dict(printconf))
 
+        # send file
+        # buf_size = 4096
+        # self.set_header('Content-Type', 'application/octet-stream')
+        # self.set_header('Content-Disposition', 'attachment; filename=' + files[0])
+        # with open(files[0], 'rb') as f:
+        #     while True:
+        #         data = f.read(buf_size)
+        #         if not data:
+        #             break
+        #         self.write(data)
+        # self.finish()
 
 
 class UploadHandler(BaseHandler):
