@@ -41,7 +41,7 @@ ARCHIVE = True
 ARCHIVE_DIR = 'archive'
 PRINT_CMD = 'lp -n %(copies)s -o sides=%(sides)s -o sides=%(media)s'
 
-CODE_DIGITS = 4
+CODE_DIGITS = 6
 MAX_PAGES = 10
 PRINT_WITH_CODE = True
 
@@ -209,7 +209,6 @@ class QueryHandler(BaseHandler):
 class UploadHandler(BaseHandler):
     """File upload handler."""
     def generateCode(self):
-        filler = '%0' + str(self.cfg.code_digits) + 'd'
         existing = set()
         re_code = re.compile('(\d{' + str(self.cfg.code_digits) + '})-.*')
         for fname in glob.glob(self.cfg.queue_dir + '/*'):
@@ -222,7 +221,7 @@ class UploadHandler(BaseHandler):
         code = None
         for i in range(10**self.cfg.code_digits):
             intCode = random.randint(0, (10**self.cfg.code_digits)-1)
-            code = filler % intCode
+            code = str(intCode).zfill(self.cfg.code_digits)
             if code not in existing:
                 break
         return code
@@ -316,11 +315,17 @@ class UploadHandler(BaseHandler):
                     pass
             return
         if self.cfg.print_with_code:
-            self.build_success("go to the printer and enter this code: %s" % code)
+            self.build_success("go to the printer and enter this code: %s" % self.prettycode(code))
         else:
             self.print_file(pname)
             self.build_success("file sent to printer")
 
+    def prettycode(self, code):
+        match self.cfg.code_digits:
+            case 5 | 6:
+                return '-'.join((code[:3], code[3:]))
+            case _:
+                return(code)
 
 class TemplateHandler(BaseHandler):
     """Handler for the template files in the / path."""
