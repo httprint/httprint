@@ -1,0 +1,10 @@
+version: '3.7'
+
+services:
+  httprint:
+    container_name: httprint
+    build: .
+    ports:
+      - 8080:7777
+    volumes:
+      - ~/queue:/httprint/queue
