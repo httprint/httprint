@@ -226,6 +226,13 @@ class UploadHandler(BaseHandler):
                 break
         return code
 
+    def prettycode(self, code):
+        match self.cfg.code_digits:
+            case 5 | 6:
+                return '-'.join((code[:3], code[3:]))
+            case _:
+                return(code)
+
     @gen.coroutine
     def post(self):
         if not self.request.files.get('file'):
@@ -315,17 +322,10 @@ class UploadHandler(BaseHandler):
                     pass
             return
         if self.cfg.print_with_code:
-            self.build_success("go to the printer and enter this code: %s" % self.prettycode(code))
+            self.build_success("In order to print %s go to the printer and enter this code: %s" % (webFname, self.prettycode(code)))
         else:
             self.print_file(pname)
             self.build_success("file sent to printer")
-
-    def prettycode(self, code):
-        match self.cfg.code_digits:
-            case 5 | 6:
-                return '-'.join((code[:3], code[3:]))
-            case _:
-                return(code)
 
 class TemplateHandler(BaseHandler):
     """Handler for the template files in the / path."""
