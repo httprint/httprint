@@ -34,6 +34,7 @@ from tornado import gen, escape
 
 import configparser
 import PyPDF2
+import base64
 
 API_VERSION = '1.0'
 QUEUE_DIR = 'queue'
@@ -184,11 +185,39 @@ class PrintHandler(BaseHandler):
         self.print_file(files[0])
         self.build_success("file sent to printer")
 
-class QueryHandler(BaseHandler):
+class DownloadHandler(BaseHandler):
+    @gen.coroutine
+    def get(self, code=None):
+        logging.info(self.request.arguments)
+        
+        if not code:
+            self.build_error("empty code")
+            return
+        files = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/%s-*' % code))
+                 if not x.endswith('.info') and not x.endswith('.keep')]
+        if not files:
+            self.build_error("no matching files")
+            return
+        
+        # send file
+        buf_size = 4096
+        self.set_header('Content-Type', 'application/octet-stream')
+        self.set_header('Content-Disposition', 'attachment; filename=' + files[0])
+        with open(files[0], 'rb') as f:
+            while True:
+                data = f.read(buf_size)
+                if not data:
+                    break
+                self.write(data)
+        self.finish()
+
+
+
+class InfoHandler(BaseHandler):
     """File print handler."""
     @gen.coroutine
-    def get(self, code=None, ppd=None):
-        logging.info(self.request.arguments)
+    def get(self, code=None):
+        logger.info(self.request.arguments)
         
         if not code:
             self.build_error("empty code")
@@ -204,19 +233,11 @@ class QueryHandler(BaseHandler):
         config = configparser.ConfigParser()
         config.read(files[0] + '.info')
         printconf = config['print']
-        self.build_success(dict(printconf))
 
-        # send file
-        # buf_size = 4096
-        # self.set_header('Content-Type', 'application/octet-stream')
-        # self.set_header('Content-Disposition', 'attachment; filename=' + files[0])
-        # with open(files[0], 'rb') as f:
-        #     while True:
-        #         data = f.read(buf_size)
-        #         if not data:
-        #             break
-        #         self.write(data)
-        # self.finish()
+        # self.build_success(dict(printconf))
+        with open(files[0], 'rb') as f:
+            self.build_success({"info":dict(printconf), "data":base64.b64encode(f.read()).decode('utf-8')})
+
 
 
 class UploadHandler(BaseHandler):
@@ -383,17 +404,14 @@ def serve():
 
     _upload_path = r'upload/?'
     _print_path = r'print/(?P<code>\d+)'
-    _query_path = r'query/(?P<code>\d+)'
-    _query_path_ppd = r'query/(?P<code>\d+)/(?P<ppd>\d+)'
+    _download_path = r'download/(?P<code>\d+)'
+    _info_path = r'info/(?P<code>\d+)'
+
     application = tornado.web.Application([
             (r'/api/%s' % _upload_path, UploadHandler, init_params),
-            (r'/api/v%s/%s' % (API_VERSION, _upload_path), UploadHandler, init_params),
             (r'/api/%s' % _print_path, PrintHandler, init_params),
-            (r'/api/v%s/%s' % (API_VERSION, _print_path), PrintHandler, init_params),
-            (r'/api/%s' % _query_path, QueryHandler, init_params),
-            (r'/api/v%s/%s' % (API_VERSION, _query_path), QueryHandler, init_params),
-            (r'/api/%s' % _query_path_ppd, QueryHandler, init_params),
-            (r'/api/v%s/%s' % (API_VERSION, _query_path_ppd), QueryHandler, init_params),
+            (r'/api/%s' % _download_path, DownloadHandler, init_params),
+            (r'/api/%s' % _info_path, InfoHandler, init_params),
             (r'/?(.*)', TemplateHandler, init_params),
         ],
         static_path=os.path.join(os.path.dirname(__file__), 'dist/static'),
