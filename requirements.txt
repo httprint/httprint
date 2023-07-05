@@ -1,2 +1,2 @@
 tornado
-PyPDF2
+pypdf

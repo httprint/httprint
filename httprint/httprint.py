@@ -33,7 +33,7 @@ import tornado.web
 from tornado import gen, escape
 
 import configparser
-import PyPDF2
+import pypdf
 import base64
 
 API_VERSION = '1.0'
@@ -338,7 +338,7 @@ class UploadHandler(BaseHandler):
 
                 #sostituito il comando pdfinfo con una libreria di python
                 with open(pname, 'rb') as f:
-                    pages = PyPDF2.PdfFileReader(f).numPages
+                    pages = pypdf.PdfFileReader(f).numPages
 
                 if pages * copies > self.cfg.max_pages and self.cfg.check_pdf_pages and not failure:
                     self.build_error('too many pages to print (%d)' % (pages * copies))
