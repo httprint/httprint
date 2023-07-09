@@ -34,22 +34,16 @@ from tornado import gen, escape
 
 import configparser
 import pypdf
-import base64
 
-API_VERSION = '1.0'
 QUEUE_DIR = 'queue'
-ARCHIVE = True
+ARCHIVE = False
 ARCHIVE_DIR = 'archive'
-PRINT_CMD = 'lp -n %(copies)s -o sides=%(sides)s -o sides=%(media)s'
 
 CODE_DIGITS = 6
 MAX_PAGES = 10
-PRINT_WITH_CODE = True
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-re_pages = re.compile('^Pages:\s+(\d+)$', re.M | re.I)
 
 
 class HTTPrintBaseException(Exception):
@@ -145,46 +139,6 @@ class BaseHandler(tornado.web.RequestHandler):
         p = mp.Process(target=self._run, args=(cmd, fname, callback))
         p.start()
 
-    def print_file(self, fname):
-        copies = 1
-        sides = "two-sided-long-edge"
-        media = "A4"
-
-        config = configparser.ConfigParser()
-        config.read(fname + '.info')
-        printconf = config['print']
-        copies = printconf.getint('copies')
-        if copies < 1:
-            copies = 1
-        sides = printconf.get('sides')
-        media = printconf.get('media')
-        
-        print_cmd = self.cfg.print_cmd.split(' ')
-        cmd = [x % {'copies': copies, 'sides': sides, 'media': media} for x in print_cmd] + [fname]
-        print (cmd)
-        self.run_subprocess(cmd, fname, self._archive)
-
-class PrintHandler(BaseHandler):
-    """File print handler."""
-    @gen.coroutine
-    def post(self, code=None):
-        if not code:
-            self.build_error("empty code")
-            return
-        remote_ip = self.request.headers.get("X-Real-IP") or \
-            self.request.headers.get("X-Forwarded-For") or \
-            self.request.remote_ip
-        if remote_ip not in ('127.0.0.1', '::1', 'localhost'):
-            self.build_error("invalid caller")
-            return
-        files = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/%s-*' % code))
-                 if not x.endswith('.info') and not x.endswith('.keep')]
-        if not files:
-            self.build_error("no matching files")
-            return
-        self.print_file(files[0])
-        self.build_success("file sent to printer")
-
 class DownloadHandler(BaseHandler):
     @gen.coroutine
     def get(self, code=None):
@@ -234,9 +188,9 @@ class InfoHandler(BaseHandler):
         config.read(files[0] + '.info')
         printconf = config['print']
 
-        # self.build_success(dict(printconf))
-        with open(files[0], 'rb') as f:
-            self.build_success({"info":dict(printconf), "data":base64.b64encode(f.read()).decode('utf-8')})
+        self.build_success(dict(printconf))
+        # with open(files[0], 'rb') as f:
+        #     self.build_success({"info":dict(printconf), "data":base64.b64encode(f.read()).decode('utf-8')})
 
 
 
@@ -273,12 +227,9 @@ class UploadHandler(BaseHandler):
             self.build_error("no file uploaded")
             return
         copies = 1
-
-        #questi per ora stanno qui perche' non sso come implemtare la parte web
         sides = "two-sided-long-edge"
         media = "A4"
         color = False
-
 
         try:
             copies = int(self.get_argument('copies'))
@@ -286,6 +237,19 @@ class UploadHandler(BaseHandler):
                 copies = 1
         except Exception:
             pass
+        try:
+            sides = self.get_argument('sides')
+        except Exception:
+            pass
+        try:
+            media = self.get_argument('media')
+        except Exception:
+            pass
+        try:
+            color = bool(self.get_argument('color'))
+        except Exception:
+            pass
+
         if copies > self.cfg.max_pages:
             self.build_error('you have asked too many copies')
             return
@@ -328,15 +292,6 @@ class UploadHandler(BaseHandler):
         failure = False
         if self.cfg.check_pdf_pages or self.cfg.pdf_only:
             try:
-                # p = subprocess.Popen(['pdfinfo', pname], stdout=subprocess.PIPE)
-                # out, _ = p.communicate()
-                # if p.returncode != 0 and self.cfg.pdf_only:
-                #     self.build_error('the uploaded file does not seem to be a PDF')
-                #     failure = True
-                # out = out.decode('utf-8', errors='ignore')
-                # pages = int(re_pages.findall(out)[0])
-
-                #sostituito il comando pdfinfo con una libreria di python
                 with open(pname, 'rb') as f:
                     pages = len(pypdf.PdfReader(f).pages)
 
@@ -355,11 +310,8 @@ class UploadHandler(BaseHandler):
                 except Exception:
                     pass
             return
-        if self.cfg.print_with_code:
-            self.build_success("In order to print %s go to the printer and enter this code: %s" % (webFname, self.prettycode(code)))
-        else:
-            self.print_file(pname)
-            self.build_success("file sent to printer")
+        self.build_success("In order to print %s go to the printer and enter this code: %s" % (webFname, self.prettycode(code)))
+
 
 class TemplateHandler(BaseHandler):
     """Handler for the template files in the / path."""
@@ -384,12 +336,8 @@ def serve():
     define('code-digits', default=CODE_DIGITS, help='number of digits of the code', type=int)
     define('max-pages', default=MAX_PAGES, help='maximum number of pages to print', type=int)
     define('queue-dir', default=QUEUE_DIR, help='directory to store files before they are printed', type=str)
-    define('archive', default=True, help='archive printed files', type=bool)
-    define('archive-dir', default=ARCHIVE_DIR, help='directory to archive printed files', type=str)
-    define('print-with-code', default=True, help='a code must be entered for printing', type=bool)
     define('pdf-only', default=True, help='only print PDF files', type=bool)
     define('check-pdf-pages', default=True, help='check that the number of pages of PDF files do not exeed --max-pages', type=bool)
-    define('print-cmd', default=PRINT_CMD, help='command used to print the documents')
     define('debug', default=False, help='run in debug mode', type=bool)
     tornado.options.parse_command_line()
     
@@ -403,13 +351,11 @@ def serve():
     init_params = dict(listen_port=options.port, logger=logger, ssl_options=ssl_options, cfg=options)
 
     _upload_path = r'upload/?'
-    _print_path = r'print/(?P<code>\d+)'
     _download_path = r'download/(?P<code>\d+)'
     _info_path = r'info/(?P<code>\d+)'
 
     application = tornado.web.Application([
             (r'/api/%s' % _upload_path, UploadHandler, init_params),
-            (r'/api/%s' % _print_path, PrintHandler, init_params),
             (r'/api/%s' % _download_path, DownloadHandler, init_params),
             (r'/api/%s' % _info_path, InfoHandler, init_params),
             (r'/?(.*)', TemplateHandler, init_params),

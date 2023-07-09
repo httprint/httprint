@@ -1,10 +1,12 @@
 function uploadFile() {
-    let photo = document.getElementById("upload-file").files[0];
-    let copies = document.getElementById("copies").value;
     let formData = new FormData();
 
-    formData.append("file", photo);
-    formData.append("copies", copies);
+    formData.append("file", document.getElementById("upload-file").files[0]);
+    formData.append("copies", document.getElementById("copies").value);
+    formData.append("sides", document.getElementById("sides").value);
+    formData.append("media", document.getElementById("media").value);
+    formData.append("color", document.getElementById("color").value);
+
     var uploadField = document.getElementById("upload-file");
     fetch("/api/upload", {method: "POST", body: formData})
         .then(function(response) {
@@ -23,7 +25,10 @@ function uploadFile() {
                     position: "top-center"
                 });
                 uploadField.value = null;
-                copies.value = 1;
+                document.getElementById("copies").value = 1;
+                document.getElementById("sides").selectedIndex = null
+                document.getElementById("media").selectedIndex = null
+                document.getElementById("color").selectedIndex = null
             } else {
                 $.toast({
                     text: reply.message || "unable to print file",

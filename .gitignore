@@ -1,5 +1,5 @@
-queue/*
-archive/*
+queue/
+archive/
 .DS_Store
 node_modules/
 __pycache__
@@ -8,4 +8,4 @@ ssl/*.pem
 *.py[cod]
 *.so
 .editorconfig
-queue/
+

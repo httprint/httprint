@@ -37,6 +37,28 @@
           <label for="copies">Number of copies</label>
           <input id="copies" type="number" min="1" max="10" value="1" class="form-control">
         </div>
+        <div class="form-group">
+          <label for="sides">Sides</label>
+          <select id="sides"class="form-control">
+            <option selected>two-sided-long-edge</option>
+            <option>two-sided-short-edge</option>
+            <option>one-sided</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="media">Media</label>
+          <select id="media"class="form-control">
+            <option selected>A4</option>
+            <option>A3</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="color">Color</label>
+          <select id="color"class="form-control">
+            <option selected>False</option>
+            <option>True</option>
+          </select>
+        </div>
         <button id="print-btn" class="btn-lg btn-primary">print</button>
       </div>
     </div>
