@@ -176,20 +176,39 @@ class InfoHandler(BaseHandler):
         if not code:
             self.build_error("empty code")
             return
-        files = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/%s-*' % code))
+        fnamearr = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/**/%s-*' % code, recursive=True))
                  if not x.endswith('.info') and not x.endswith('.keep')]
-        if not files:
+        if not fnamearr:
             self.build_error("no matching files")
             return
-        
+        else:
+            fname = fnamearr[0]
+
+
         #questa e' una prova per leggere il file di configurazione
         #e farsi mandare il file da stampare
+        printconf = {}
         config = configparser.ConfigParser()
-        config.read(files[0] + '.info')
-        printconf = dict(config['print'])
-        printconf["filename"] = os.path.basename(files[0])
 
+        try:            
+            config.read(os.path.dirname(fname) + "/" + code + '.info')
+            printconf = {**printconf, **dict(config['print'])} 
+        except Exception:
+            pass
+
+        if printconf.get("random",False):
+            fname = random.choice(fnamearr)
+
+        try:
+            config.read(fname + '.info')
+            printconf = {**printconf, **dict(config['print'])} 
+        except Exception:
+            pass
+
+        
+        printconf["filename"] = os.path.basename(fname)
         self.build_success(printconf)
+
         # with open(files[0], 'rb') as f:
         #     self.build_success({"info":dict(printconf), "data":base64.b64encode(f.read()).decode('utf-8')})
 
@@ -211,8 +230,9 @@ class UploadHandler(BaseHandler):
         for i in range(10**self.cfg.code_digits):
             intCode = random.randint(0, (10**self.cfg.code_digits)-1)
             code = str(intCode).zfill(self.cfg.code_digits)
-            if code not in existing:
-                break
+            if not code.startswith(tuple(["0","1"])):
+                if code not in existing:
+                    break
         return code
 
     def prettycode(self, code):
