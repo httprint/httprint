@@ -186,9 +186,10 @@ class InfoHandler(BaseHandler):
         #e farsi mandare il file da stampare
         config = configparser.ConfigParser()
         config.read(files[0] + '.info')
-        printconf = config['print']
+        printconf = dict(config['print'])
+        printconf["filename"] = os.path.basename(files[0])
 
-        self.build_success(dict(printconf))
+        self.build_success(printconf)
         # with open(files[0], 'rb') as f:
         #     self.build_success({"info":dict(printconf), "data":base64.b64encode(f.read()).decode('utf-8')})
 
