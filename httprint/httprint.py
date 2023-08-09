@@ -36,8 +36,11 @@ import configparser
 import pypdf
 
 QUEUE_DIR = 'queue'
+PPD_DIR = 'ppd'
 ARCHIVE = False
 ARCHIVE_DIR = 'archive'
+
+CONV_CMD = "tfile=\"$(mktemp /tmp/foo.XXXXXXXXX)\" && cupsfilter -p %(ppd)s -m printer/foo -e -n %(copies)s -o sides=%(sides)s -o media=%(media)s %(in)s > $tfile 2>/dev/null && cp $tfile %(out)s &"
 
 CODE_DIGITS = 6
 MAX_PAGES = 10
@@ -333,6 +336,23 @@ class UploadHandler(BaseHandler):
             return
         self.build_success("In order to print %s go to the printer and enter this code: %s" % (webFname, self.prettycode(code)))
 
+        #raw
+        ppds = sorted(glob.glob(self.cfg.ppd_dir + "/*.ppd"))
+        for ppd in ppds:
+            # logger.info("ppd: " + ppd)
+            with open(ppd) as ppdfile:
+                ppdstd = [x for x in ppdfile if x.startswith("*PCFileName:")]
+                ppdstd = ppdstd[0].lower().split('"')[1].split(".ppd")[0]
+            logger.info("ppdstd: " + ppdstd)
+
+            rawname = pname + "." + ppdstd + ".raw"
+            cmd = CONV_CMD.split(' ')
+            cmd = [x % {'in': pname, 'out': rawname, 'ppd': ppd, 'copies': copies, 'sides': sides, 'media': media} for x in cmd]
+            cmd = " ".join(cmd)
+            # logger.info(cmd)
+            os.system(cmd)
+
+
 
 class TemplateHandler(BaseHandler):
     """Handler for the template files in the / path."""
@@ -357,6 +377,7 @@ def serve():
     define('code-digits', default=CODE_DIGITS, help='number of digits of the code', type=int)
     define('max-pages', default=MAX_PAGES, help='maximum number of pages to print', type=int)
     define('queue-dir', default=QUEUE_DIR, help='directory to store files before they are printed', type=str)
+    define('ppd-dir', default=PPD_DIR, help='directory to store ppd files', type=str)
     define('pdf-only', default=True, help='only print PDF files', type=bool)
     define('check-pdf-pages', default=True, help='check that the number of pages of PDF files do not exeed --max-pages', type=bool)
     define('debug', default=False, help='run in debug mode', type=bool)
