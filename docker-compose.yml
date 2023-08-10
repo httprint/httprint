@@ -7,4 +7,5 @@ services:
     ports:
       - 8080:7777
     volumes:
-      - ~/queue:/httprint/queue
+      - ./httprint/queue:/httprint/queue
+      - ./httprint/ppd:/httprint/ppd
