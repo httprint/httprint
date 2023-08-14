@@ -34,11 +34,18 @@ from tornado import gen, escape
 
 import configparser
 import pypdf
+import base64
 
 QUEUE_DIR = 'queue'
 PPD_DIR = 'ppd'
 ARCHIVE = False
 ARCHIVE_DIR = 'archive'
+
+DEFAULT_COPIES = 1
+DEFAULT_SIDES = "two-sided-long-edge" #two-sided-long-edge, two-sided-short-edge, one-sided
+DEFAULT_MEDIA = "A4"
+DEFAULT_COLOR = False
+
 
 CONV_CMD = "tfile=\"$(mktemp /tmp/foo.XXXXXXXXX)\" && cupsfilter -p %(ppd)s -m printer/foo -e -n %(copies)s -o sides=%(sides)s -o media=%(media)s %(in)s > $tfile 2>/dev/null && cp $tfile %(out)s &"
 
@@ -120,8 +127,6 @@ class BaseHandler(tornado.web.RequestHandler):
             callback(cmd, fname, p)
 
     def _archive(self, cmd, fname, p):
-        if os.path.isfile('%s.keep' % fname):
-            return
         if self.cfg.archive:
             if not os.path.isdir(self.cfg.archive_dir):
                 os.makedirs(self.cfg.archive_dir)
@@ -174,7 +179,7 @@ class InfoHandler(BaseHandler):
     """File print handler."""
     @gen.coroutine
     def get(self, code=None):
-        logger.info(self.request.arguments)
+        # logger.info(self.request.arguments)
         
         if not code:
             self.build_error("empty code")
@@ -216,6 +221,76 @@ class InfoHandler(BaseHandler):
         #     self.build_success({"info":dict(printconf), "data":base64.b64encode(f.read()).decode('utf-8')})
 
 
+class InfotestHandler(BaseHandler):
+    """File print handler."""
+    @gen.coroutine
+    def get(self, code=None):
+        # logger.info(self.request.arguments)
+        token = self.get_argument("token", default=None, strip=False)
+        ppdstd = self.get_argument("ppdstd", default=None, strip=False)
+
+
+        if not code:
+            self.build_error("empty code")
+            return
+        
+        if not ppdstd:
+            fnamearr = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/**/%s-*' % code, recursive=True))
+                 if not x.endswith('.info') and not x.endswith('.raw')]
+        else:
+            #questo cerca direttamente il raw
+            fnamearr = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/**/%s-*.' % code + ppdstd + '.raw', recursive=True))]
+
+        if not fnamearr:
+            self.build_error("no matching files")
+            return
+        
+        fname = fnamearr[0]
+
+        #questa e' una prova per leggere il file di configurazione
+        #e farsi mandare il file da stampare
+        printconf = {}
+        config = configparser.ConfigParser()
+
+        copies = DEFAULT_COPIES
+        sides = DEFAULT_SIDES
+        media = DEFAULT_MEDIA
+        color = DEFAULT_COLOR
+        keep = code.startswith(tuple(["0","1"]))
+
+        printconf['copies'] = '%d' % copies
+        printconf['sides'] = '%s' % sides
+        printconf['media'] = '%s' % media
+        printconf['color'] = '%s' % color
+        printconf['keep'] = '%s' % keep
+
+        try:            
+            config.read(os.path.dirname(fname)+ "/" + code + '.info')
+            printconf = {**printconf, **dict(config['print'])} 
+        except Exception:
+            pass
+
+        if printconf.get("random",False):
+            fname = random.choice(fnamearr)
+
+        try:
+            config.read(fname.replace('.' + str(ppdstd) + '.raw','') + '.info')
+            printconf = {**printconf, **dict(config['print'])} 
+        except Exception:
+            pass
+
+        printconf["filename"] = os.path.basename(fname)
+        # self.build_success(printconf)
+
+        with open(fname, 'rb') as f:
+            self.build_success({"info":printconf, "data":base64.b64encode(f.read()).decode('utf-8')})
+
+        if not (printconf["keep"] == 'True'):
+            for fn in glob.glob(fname.replace('.' + str(ppdstd) + '.raw','') + '*'):
+                try:
+                    os.unlink(fn)
+                except Exception:
+                    pass
 
 class UploadHandler(BaseHandler):
     """File upload handler."""
@@ -250,10 +325,10 @@ class UploadHandler(BaseHandler):
         if not self.request.files.get('file'):
             self.build_error("no file uploaded")
             return
-        copies = 1
-        sides = "two-sided-long-edge"
-        media = "A4"
-        color = False
+        copies = DEFAULT_COPIES
+        sides = DEFAULT_SIDES
+        media = DEFAULT_MEDIA
+        color = DEFAULT_COLOR
 
         try:
             copies = int(self.get_argument('copies'))
@@ -343,7 +418,7 @@ class UploadHandler(BaseHandler):
             with open(ppd) as ppdfile:
                 ppdstd = [x for x in ppdfile if x.startswith("*PCFileName:")]
                 ppdstd = ppdstd[0].lower().split('"')[1].split(".ppd")[0]
-            logger.info("ppdstd: " + ppdstd)
+            # logger.info("ppdstd: " + ppdstd)
 
             rawname = pname + "." + ppdstd + ".raw"
             cmd = CONV_CMD.split(' ')
@@ -395,11 +470,13 @@ def serve():
     _upload_path = r'upload/?'
     _download_path = r'download/(?P<code>\d+)'
     _info_path = r'info/(?P<code>\d+)'
+    _infotest_path = r'infotest/(?P<code>\d+)'
 
     application = tornado.web.Application([
             (r'/api/%s' % _upload_path, UploadHandler, init_params),
             (r'/api/%s' % _download_path, DownloadHandler, init_params),
             (r'/api/%s' % _info_path, InfoHandler, init_params),
+            (r'/api/%s' % _infotest_path, InfotestHandler, init_params),
             (r'/?(.*)', TemplateHandler, init_params),
         ],
         static_path=os.path.join(os.path.dirname(__file__), 'dist/static'),
