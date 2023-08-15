@@ -245,9 +245,7 @@ class InfotestHandler(BaseHandler):
             fnamearr = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/**/%s-*.' % code + ppdstd + '.raw', recursive=True))]
 
         # fix for folders result
-        print(fnamearr)
         fnamearr = [f for f in fnamearr if os.path.isfile(f)]
-        print(fnamearr)
         
         if not fnamearr:
             self.build_error("no matching files")
