@@ -226,10 +226,13 @@ class InfotestHandler(BaseHandler):
     @gen.coroutine
     def get(self, code=None):
         # logger.info(self.request.arguments)
-        token = self.get_argument("token", default=None, strip=False)
+        token = self.get_argument("token", default="", strip=False)
         ppdstd = self.get_argument("ppdstd", default=None, strip=False)
 
-
+        if not token in self.cfg.tokenlist.split(","):
+            self.build_error("not allowed")
+            return
+        
         if not code:
             self.build_error("empty code")
             return
@@ -456,6 +459,7 @@ def serve():
     define('pdf-only', default=True, help='only print PDF files', type=bool)
     define('check-pdf-pages', default=True, help='check that the number of pages of PDF files do not exeed --max-pages', type=bool)
     define('debug', default=False, help='run in debug mode', type=bool)
+    define('tokenlist', default="", help='token list', type=str)
     tornado.options.parse_command_line()
     
     if options.debug:
@@ -474,8 +478,8 @@ def serve():
 
     application = tornado.web.Application([
             (r'/api/%s' % _upload_path, UploadHandler, init_params),
-            (r'/api/%s' % _download_path, DownloadHandler, init_params),
-            (r'/api/%s' % _info_path, InfoHandler, init_params),
+            # (r'/api/%s' % _download_path, DownloadHandler, init_params),
+            # (r'/api/%s' % _info_path, InfoHandler, init_params),
             (r'/api/%s' % _infotest_path, InfotestHandler, init_params),
             (r'/?(.*)', TemplateHandler, init_params),
         ],
