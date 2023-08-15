@@ -9,3 +9,5 @@ services:
     volumes:
       - ./httprint/queue:/httprint/queue
       - ./httprint/ppd:/httprint/ppd
+    # environment:
+    #   - "TOKEN_LIST=aaa,bbb"

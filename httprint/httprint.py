@@ -244,6 +244,11 @@ class InfotestHandler(BaseHandler):
             #questo cerca direttamente il raw
             fnamearr = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/**/%s-*.' % code + ppdstd + '.raw', recursive=True))]
 
+        # fix for folders result
+        print(fnamearr)
+        fnamearr = [f for f in fnamearr if os.path.isfile(f)]
+        print(fnamearr)
+        
         if not fnamearr:
             self.build_error("no matching files")
             return
@@ -446,20 +451,21 @@ class TemplateHandler(BaseHandler):
 
 def serve():
     """Read configuration and start the server."""
+
     define('port', default=7777, help='run on the given port', type=int)
     define('address', default='', help='bind the server at the given address', type=str)
     define('ssl_cert', default=os.path.join(os.path.dirname(__file__), 'ssl', 'httprint_cert.pem'),
             help='specify the SSL certificate to use for secure connections')
     define('ssl_key', default=os.path.join(os.path.dirname(__file__), 'ssl', 'httprint_key.pem'),
             help='specify the SSL private key to use for secure connections')
-    define('code-digits', default=CODE_DIGITS, help='number of digits of the code', type=int)
-    define('max-pages', default=MAX_PAGES, help='maximum number of pages to print', type=int)
+    define('code-digits', default=os.environ.get("CODE_DIGITS", CODE_DIGITS), help='number of digits of the code', type=int)
+    define('max-pages', default=os.environ.get("MAX_PAGES", MAX_PAGES), help='maximum number of pages to print', type=int)
     define('queue-dir', default=QUEUE_DIR, help='directory to store files before they are printed', type=str)
     define('ppd-dir', default=PPD_DIR, help='directory to store ppd files', type=str)
     define('pdf-only', default=True, help='only print PDF files', type=bool)
     define('check-pdf-pages', default=True, help='check that the number of pages of PDF files do not exeed --max-pages', type=bool)
     define('debug', default=False, help='run in debug mode', type=bool)
-    define('tokenlist', default="", help='token list', type=str)
+    define('tokenlist', default=os.environ.get("TOKEN_LIST",""), help='token list', type=str)
     tornado.options.parse_command_line()
     
     if options.debug:
