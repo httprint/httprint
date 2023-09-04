@@ -262,7 +262,7 @@ class InfotestHandler(BaseHandler):
         sides = DEFAULT_SIDES
         media = DEFAULT_MEDIA
         color = DEFAULT_COLOR
-        keep = code.startswith(tuple(["0","1"]))
+        keep = str(code.startswith(tuple(["0","1"])))
 
         printconf['copies'] = '%d' % copies
         printconf['sides'] = '%s' % sides
@@ -291,7 +291,7 @@ class InfotestHandler(BaseHandler):
         with open(fname, 'rb') as f:
             self.build_success({"info":printconf, "data":base64.b64encode(f.read()).decode('utf-8')})
 
-        if not (printconf["keep"] == 'True'):
+        if not (printconf["keep"].lower() == 'true'):
             for fn in glob.glob(fname.replace('.' + str(ppdstd) + '.raw','') + '*'):
                 try:
                     os.unlink(fn)
@@ -476,9 +476,9 @@ def serve():
     init_params = dict(listen_port=options.port, logger=logger, ssl_options=ssl_options, cfg=options)
 
     _upload_path = r'upload/?'
-    _download_path = r'download/(?P<code>\d+)'
-    _info_path = r'info/(?P<code>\d+)'
-    _infotest_path = r'infotest/(?P<code>\d+)'
+    _download_path = r'download/(?P<code>\w+)'
+    _info_path = r'info/(?P<code>\w+)'
+    _infotest_path = r'infotest/(?P<code>\w+)'
 
     application = tornado.web.Application([
             (r'/api/%s' % _upload_path, UploadHandler, init_params),
