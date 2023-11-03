@@ -17,7 +17,6 @@ limitations under the License.
 
 import os
 import re
-import time
 import glob
 import random
 import shutil
@@ -36,6 +35,9 @@ import configparser
 import pypdf
 import base64
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime
+
 QUEUE_DIR = 'queue'
 PPD_DIR = 'ppd'
 ARCHIVE = False
@@ -51,6 +53,7 @@ CONV_CMD = "tfile=\"$(mktemp /tmp/foo.XXXXXXXXX)\" && cupsfilter -p %(ppd)s -m p
 
 CODE_DIGITS = 6
 MAX_PAGES = 10
+KEEP_TIME = 1440 #24h
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -365,7 +368,7 @@ class UploadHandler(BaseHandler):
             pass
         if not os.path.isdir(self.cfg.queue_dir):
             os.makedirs(self.cfg.queue_dir)
-        now = time.strftime('%Y%m%d%H%M%S')
+        now = datetime.now().strftime('%Y%m%d%H%M%S')
         code = self.generateCode()
         fname = '%s-%s%s' % (code, now, extension)
         pname = os.path.join(self.cfg.queue_dir, fname)
@@ -446,6 +449,41 @@ class TemplateHandler(BaseHandler):
 def strbool(s):
     return s.lower() in ('true', '1', 't', 'y', 'yes')
 
+
+def clean_expired(qdir, ktime):
+    fnamearr = [x for x in sorted(glob.glob(f"{qdir}/*-*.pdf", recursive=False))]
+    
+    config = configparser.ConfigParser()
+    for fname in fnamearr:
+        printconf={}
+        try:
+            config.read(fname + '.info')
+            printconf = config['print'] 
+        except Exception:
+            pass
+
+        d=printconf.get("date")
+        if not d:
+            continue
+        if strbool(printconf.get("keep","")):
+            continue
+        
+        t=datetime.strptime(d,'%Y%m%d%H%M%S')
+        tdiff = int((datetime.now() - t).total_seconds()/60)
+        if tdiff < int(ktime): #this should be set in config
+            continue
+
+        logger.info(f"Document {os.path.basename(fname)} expired")
+
+        for fn in glob.glob(fname + '*'):
+            try:
+                os.unlink(fn)
+            except Exception:
+                pass
+
+
+
+
 def serve():
     """Read configuration and start the server."""
 
@@ -463,6 +501,8 @@ def serve():
     define('check-pdf-pages', default=True, help='check that the number of pages of PDF files do not exeed --max-pages', type=bool)
     define('debug', default=False, help='run in debug mode', type=bool)
     define('tokenlist', default=os.environ.get("TOKEN_LIST",""), help='token list', type=str)
+    define('keep-time', default=os.environ.get("KEEP_TIME",KEEP_TIME), help='keep the document for x minutes', type=int)
+
     tornado.options.parse_command_line()
     
     if options.debug:
@@ -494,6 +534,13 @@ def serve():
                                                  options.address if options.address else '127.0.0.1',
                                                  options.port)
     http_server.listen(options.port, options.address)
+
+    #clean expired documents
+    sched = BackgroundScheduler()
+    sched.add_job(clean_expired, 'interval', args=[options.queue_dir, options.keep_time], next_run_time=datetime.now(), seconds=120)
+    sched.start()
+
+
     try:
         IOLoop.instance().start()
     except (KeyboardInterrupt, SystemExit):
