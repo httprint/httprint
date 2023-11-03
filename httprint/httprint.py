@@ -237,15 +237,7 @@ class InfotestHandler(BaseHandler):
             self.build_error("empty code")
             return
         
-        if not ppdstd:
-            fnamearr = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/**/%s-*' % code, recursive=True))
-                 if not x.endswith('.info') and not x.endswith('.raw')]
-        else:
-            #questo cerca direttamente il raw
-            fnamearr = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/**/%s-*.' % code + ppdstd + '.raw', recursive=True))]
-
-        # fix for folders result
-        fnamearr = [f for f in fnamearr if os.path.isfile(f)]
+        fnamearr = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/**/%s-*.pdf' % code, recursive=True))]
         
         if not fnamearr:
             self.build_error("no matching files")
@@ -253,8 +245,6 @@ class InfotestHandler(BaseHandler):
         
         fname = fnamearr[0]
 
-        #questa e' una prova per leggere il file di configurazione
-        #e farsi mandare il file da stampare
         printconf = {}
         config = configparser.ConfigParser()
 
@@ -280,23 +270,31 @@ class InfotestHandler(BaseHandler):
             fname = random.choice(fnamearr)
 
         try:
-            config.read(fname.replace('.' + str(ppdstd) + '.raw','') + '.info')
+            config.read(fname + '.info')
             printconf = {**printconf, **dict(config['print'])} 
         except Exception:
             pass
 
-        printconf["filename"] = os.path.basename(fname)
-        # self.build_success(printconf)
 
-        with open(fname, 'rb') as f:
+        fnamesend = fname
+        if ppdstd:
+            fnamesend = f"{fname}.{str(ppdstd)}.raw"
+            if not os.path.exists(fnamesend):
+                self.build_error("not spooled")
+                return
+
+        printconf["filename"] = os.path.basename(fnamesend)
+        with open(fnamesend, 'rb') as f:
             self.build_success({"info":printconf, "data":base64.b64encode(f.read()).decode('utf-8')})
 
-        if not (printconf["keep"].lower() == 'true'):
-            for fn in glob.glob(fname.replace('.' + str(ppdstd) + '.raw','') + '*'):
+        if not strbool(printconf["keep"]):
+            for fn in glob.glob(fname + '*'):
                 try:
                     os.unlink(fn)
                 except Exception:
                     pass
+
+
 
 class UploadHandler(BaseHandler):
     """File upload handler."""
@@ -378,7 +376,6 @@ class UploadHandler(BaseHandler):
             self.build_error("error writing file %s: %s" % (pname, e))
             return
 
-        #questo l'ho aggiuto io. ho qualche dubbio su dove settare la variabile config
         config = configparser.ConfigParser()
         config['print'] = {}
         printconf = config['print']
@@ -433,8 +430,6 @@ class UploadHandler(BaseHandler):
             # logger.info(cmd)
             os.system(cmd)
 
-
-
 class TemplateHandler(BaseHandler):
     """Handler for the template files in the / path."""
     @gen.coroutine
@@ -446,6 +441,10 @@ class TemplateHandler(BaseHandler):
         arguments = self.arguments
         self.render(page, **arguments)
 
+
+
+def strbool(s):
+    return s.lower() in ('true', '1', 't', 'y', 'yes')
 
 def serve():
     """Read configuration and start the server."""
