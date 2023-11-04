@@ -179,7 +179,7 @@ class BaseHandler(tornado.web.RequestHandler):
         sides = DEFAULT_SIDES
         media = DEFAULT_MEDIA
         color = DEFAULT_COLOR
-        keep = str(code.startswith(tuple(["0","1"])))
+        keep = not(os.path.samefile(os.path.dirname(fname), self.cfg.queue_dir)) #default keep if file in subfolder
 
         printconf['copies'] = '%d' % copies
         printconf['sides'] = '%s' % sides
@@ -296,7 +296,8 @@ class UploadHandler(BaseHandler):
         for i in range(10**self.cfg.code_digits):
             intCode = random.randint(0, (10**self.cfg.code_digits)-1)
             code = str(intCode).zfill(self.cfg.code_digits)
-            if not code.startswith(tuple(["0","1"])):
+            exlist = [i for i in self.cfg.code_exclude_list.split(",") if i]
+            if not code.startswith(tuple(exlist)):
                 if code not in existing:
                     break
         return code
@@ -475,6 +476,7 @@ def serve():
     define('ssl_key', default=os.path.join(os.path.dirname(__file__), 'ssl', 'httprint_key.pem'),
             help='specify the SSL private key to use for secure connections')
     define('code-digits', default=os.environ.get("CODE_DIGITS", CODE_DIGITS), help='number of digits of the code', type=int)
+    define('code-exclude-list', default=os.environ.get("CODE_EXCLUDE_LIST",""), help='list of codes starting with', type=str)
     define('max-pages', default=os.environ.get("MAX_PAGES", MAX_PAGES), help='maximum number of pages to print', type=int)
     define('queue-dir', default=QUEUE_DIR, help='directory to store files before they are printed', type=str)
     define('ppd-dir', default=PPD_DIR, help='directory to store ppd files', type=str)
