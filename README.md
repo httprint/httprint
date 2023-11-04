@@ -26,10 +26,16 @@ services:
       - /data/containers/httprint/ppd:/httprint/ppd
     environment:
       - TOKEN_LIST=token1,token2
+      - CODE_DIGITS=6
+      - CODE_EXCLUDE_LIST=0,1
+      - KEEP_TIME=60
 
   ```
   
-  * `TOKEN_LIST` is a list of tokens used to allow clients to connect.
+  * `TOKEN_LIST` is a list of tokens used to allow clients to connect. Default empty
+  * `CODE_DIGITS` is the number of digits for the code. Default 6
+  * `CODE_EXCLUDE_LIST` is a list of numbers excluded from random code generation. Ex: 0,1 doesn't generate codes starting with 0 or 1 
+  * `KEEP_TIME` is the number of minutes the document is kept before deletion. Default 12 hours
   * `/httprint/ppd` folder may contain printer's ppd file to use server side spooling
 
 Now you can **point your browser to [http://localhost:7777/](http://localhost:7777/)**
