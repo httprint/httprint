@@ -34,6 +34,7 @@ from tornado import gen, escape
 import configparser
 import pypdf
 import base64
+import json
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
@@ -53,7 +54,7 @@ CONV_CMD = "tfile=\"$(mktemp /tmp/foo.XXXXXXXXX)\" && cupsfilter -p %(ppd)s -m p
 
 CODE_DIGITS = 6
 MAX_PAGES = 10
-KEEP_TIME = 1440 #24h
+KEEP_TIME = 720 #12h
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -226,7 +227,7 @@ class DownloadHandler(BaseHandler):
         buf_size = 4096
         self.set_header('Content-Type', 'application/octet-stream')
         self.set_header('Content-Disposition', 'attachment; filename=' + os.path.basename(fnamesend))
-        self.set_header('printconf', str(printconf))
+        self.set_header('printconf', json.dumps(printconf))
         with open(fnamesend, 'rb') as f:
             while True:
                 data = f.read(buf_size)
