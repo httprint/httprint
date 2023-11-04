@@ -150,84 +150,7 @@ class BaseHandler(tornado.web.RequestHandler):
         p = mp.Process(target=self._run, args=(cmd, fname, callback))
         p.start()
 
-class DownloadHandler(BaseHandler):
-    @gen.coroutine
-    def get(self, code=None):
-        logging.info(self.request.arguments)
-        
-        if not code:
-            self.build_error("empty code")
-            return
-        files = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/%s-*' % code))
-                 if not x.endswith('.info') and not x.endswith('.keep')]
-        if not files:
-            self.build_error("no matching files")
-            return
-        
-        # send file
-        buf_size = 4096
-        self.set_header('Content-Type', 'application/octet-stream')
-        self.set_header('Content-Disposition', 'attachment; filename=' + files[0])
-        with open(files[0], 'rb') as f:
-            while True:
-                data = f.read(buf_size)
-                if not data:
-                    break
-                self.write(data)
-        self.finish()
-
-
-
-class InfoHandler(BaseHandler):
-    """File print handler."""
-    @gen.coroutine
-    def get(self, code=None):
-        # logger.info(self.request.arguments)
-        
-        if not code:
-            self.build_error("empty code")
-            return
-        fnamearr = [x for x in sorted(glob.glob(self.cfg.queue_dir + '/**/%s-*' % code, recursive=True))
-                 if not x.endswith('.info') and not x.endswith('.keep')]
-        if not fnamearr:
-            self.build_error("no matching files")
-            return
-        else:
-            fname = fnamearr[0]
-
-
-        #questa e' una prova per leggere il file di configurazione
-        #e farsi mandare il file da stampare
-        printconf = {}
-        config = configparser.ConfigParser()
-
-        try:            
-            config.read(os.path.dirname(fname) + "/" + code + '.info')
-            printconf = {**printconf, **dict(config['print'])} 
-        except Exception:
-            pass
-
-        if printconf.get("random",False):
-            fname = random.choice(fnamearr)
-
-        try:
-            config.read(fname + '.info')
-            printconf = {**printconf, **dict(config['print'])} 
-        except Exception:
-            pass
-
-        
-        printconf["filename"] = os.path.basename(fname)
-        self.build_success(printconf)
-
-        # with open(files[0], 'rb') as f:
-        #     self.build_success({"info":dict(printconf), "data":base64.b64encode(f.read()).decode('utf-8')})
-
-
-class InfotestHandler(BaseHandler):
-    """File print handler."""
-    @gen.coroutine
-    def get(self, code=None):
+    def search_document(self, code):
         # logger.info(self.request.arguments)
         token = self.get_argument("token", default="", strip=False)
         ppdstd = self.get_argument("ppdstd", default=None, strip=False)
@@ -286,6 +209,64 @@ class InfotestHandler(BaseHandler):
                 self.build_error("not spooled")
                 return
 
+        return fname, fnamesend, printconf
+    
+
+class DownloadHandler(BaseHandler):
+    """File print handler."""
+    @gen.coroutine
+    def get(self, code=None):
+        
+        p = self.search_document(code)
+        if not p:
+            return
+        fname, fnamesend, printconf = p
+
+        # send file
+        buf_size = 4096
+        self.set_header('Content-Type', 'application/octet-stream')
+        self.set_header('Content-Disposition', 'attachment; filename=' + os.path.basename(fnamesend))
+        self.set_header('printconf', str(printconf))
+        with open(fnamesend, 'rb') as f:
+            while True:
+                data = f.read(buf_size)
+                if not data:
+                    break
+                self.write(data)
+        self.finish()
+
+        if not strbool(printconf["keep"]):
+            for fn in glob.glob(fname + '*'):
+                try:
+                    os.unlink(fn)
+                except Exception:
+                    pass
+
+
+class InfoHandler(BaseHandler):
+    """File info handler."""
+    @gen.coroutine
+    def get(self, code=None):
+        
+        p = self.search_document(code)
+        if not p:
+            return
+        fname, fnamesend, printconf = p
+        
+        printconf["filename"] = os.path.basename(fnamesend)
+        self.build_success(printconf)
+
+
+class InfoBase64Handler(BaseHandler):
+    """Old file print handler."""
+    @gen.coroutine
+    def get(self, code=None):
+
+        p = self.search_document(code)
+        if not p:
+            return
+        fname, fnamesend, printconf = p
+
         printconf["filename"] = os.path.basename(fnamesend)
         with open(fnamesend, 'rb') as f:
             self.build_success({"info":printconf, "data":base64.b64encode(f.read()).decode('utf-8')})
@@ -296,7 +277,6 @@ class InfotestHandler(BaseHandler):
                     os.unlink(fn)
                 except Exception:
                     pass
-
 
 
 class UploadHandler(BaseHandler):
@@ -338,7 +318,7 @@ class UploadHandler(BaseHandler):
         color = DEFAULT_COLOR
 
         try:
-            copies = int(self.get_argument('copies'))
+            copies = int(self.get_argument('copies',))
             if copies < 1:
                 copies = 1
         except Exception:
@@ -521,9 +501,9 @@ def serve():
 
     application = tornado.web.Application([
             (r'/api/%s' % _upload_path, UploadHandler, init_params),
-            # (r'/api/%s' % _download_path, DownloadHandler, init_params),
-            # (r'/api/%s' % _info_path, InfoHandler, init_params),
-            (r'/api/%s' % _infotest_path, InfotestHandler, init_params),
+            (r'/api/%s' % _download_path, DownloadHandler, init_params),
+            (r'/api/%s' % _info_path, InfoHandler, init_params),
+            (r'/api/%s' % _infotest_path, InfoBase64Handler, init_params),
             (r'/?(.*)', TemplateHandler, init_params),
         ],
         static_path=os.path.join(os.path.dirname(__file__), 'dist/static'),
