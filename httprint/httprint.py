@@ -346,9 +346,11 @@ class UploadHandler(BaseHandler):
         webFname = fileinfo['filename']
         extension = ''
         try:
-            extension = os.path.splitext(webFname)[1]
+            extension = os.path.splitext(webFname)[1].lower()
         except Exception:
             pass
+        if not extension=='.pdf':
+            extension = extension + ".pdf"
         if not os.path.isdir(self.cfg.queue_dir):
             os.makedirs(self.cfg.queue_dir)
         now = datetime.now().strftime('%Y%m%d%H%M%S')
