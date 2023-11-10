@@ -335,7 +335,7 @@ class UploadHandler(BaseHandler):
         except Exception:
             pass
         try:
-            color = bool(self.get_argument('color'))
+            color = strbool(self.get_argument('color'))
         except Exception:
             pass
 
