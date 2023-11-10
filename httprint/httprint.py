@@ -38,6 +38,7 @@ import json
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
+import pytz
 
 QUEUE_DIR = 'queue'
 PPD_DIR = 'ppd'
@@ -519,8 +520,8 @@ def serve():
     http_server.listen(options.port, options.address)
 
     #clean expired documents
-    sched = BackgroundScheduler()
-    sched.add_job(clean_expired, 'interval', args=[options.queue_dir, options.keep_time], next_run_time=datetime.now(), seconds=120)
+    sched = BackgroundScheduler(timezone=pytz.utc)
+    sched.add_job(clean_expired, 'interval', args=[options.queue_dir, options.keep_time], next_run_time=datetime.utcnow(), seconds=120)
     sched.start()
 
 
