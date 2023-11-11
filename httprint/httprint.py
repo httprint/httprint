@@ -57,6 +57,9 @@ CODE_DIGITS = 6
 MAX_PAGES = 10
 KEEP_TIME = 720 #12h
 
+UPLOAD_LIMIT_NUM = 5
+UPLOAD_LIMIT_SEC = 30
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -315,6 +318,20 @@ class UploadHandler(BaseHandler):
         if not self.request.files.get('file'):
             self.build_error("no file uploaded")
             return
+        
+        #upload limit       
+        for t in reversed(self.upload_limit_tlist):
+            dtime = datetime.utcnow() - t
+            if dtime.total_seconds() >= self.cfg.upload_limit_sec:
+                self.upload_limit_tlist.remove(t)
+        
+        if len(self.upload_limit_tlist) >= self.cfg.upload_limit_num:
+            self.build_error("Server busy. Retry later")
+            return
+        else:
+            self.upload_limit_tlist.append(datetime.utcnow())
+
+
         copies = DEFAULT_COPIES
         sides = DEFAULT_SIDES
         media = DEFAULT_MEDIA
@@ -488,6 +505,8 @@ def serve():
     define('debug', default=False, help='run in debug mode', type=bool)
     define('tokenlist', default=os.environ.get("TOKEN_LIST",""), help='token list', type=str)
     define('keep-time', default=os.environ.get("KEEP_TIME",KEEP_TIME), help='keep the document for x minutes', type=int)
+    define('upload-limit-num', default=os.environ.get("UPLOAD_LIMIT_NUM",UPLOAD_LIMIT_NUM), help='Max number of uploads in upload-limit-sec seconds', type=int)
+    define('upload-limit-sec', default=os.environ.get("UPLOAD_LIMIT_SEC",UPLOAD_LIMIT_SEC), help='Seconds for upload-limit-num', type=int)
 
     tornado.options.parse_command_line()
     
@@ -498,7 +517,7 @@ def serve():
     if os.path.isfile(options.ssl_key) and os.path.isfile(options.ssl_cert):
         ssl_options = dict(certfile=options.ssl_cert, keyfile=options.ssl_key)
 
-    init_params = dict(listen_port=options.port, logger=logger, ssl_options=ssl_options, cfg=options)
+    init_params = dict(listen_port=options.port, logger=logger, ssl_options=ssl_options, cfg=options, upload_limit_tlist = [])
 
     _upload_path = r'upload/?'
     _download_path = r'download/(?P<code>\w+)'
