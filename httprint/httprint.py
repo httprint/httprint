@@ -344,11 +344,17 @@ class UploadHandler(BaseHandler):
         except Exception:
             pass
         try:
-            sides = self.get_argument('sides')
+            v = self.get_argument('sides').lower()
+            #sanitize input
+            if v in ["two-sided-long-edge", "two-sided-short-edge", "one-sided"]:
+                sides = v
         except Exception:
             pass
         try:
-            media = self.get_argument('media')
+            v = self.get_argument('media').lower()
+            #sanitize input
+            if v in ["a3", "a4", "a5"]:
+                media = v
         except Exception:
             pass
         try:
