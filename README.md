@@ -29,6 +29,8 @@ services:
       - CODE_DIGITS=6
       - CODE_EXCLUDE_LIST=0,1
       - KEEP_TIME=60
+      - UPLOAD_LIMIT_NUM = 5
+      - UPLOAD_LIMIT_SEC = 30
 
   ```
   
@@ -36,7 +38,9 @@ services:
   * `CODE_DIGITS` is the number of digits for the code. Default 6
   * `CODE_EXCLUDE_LIST` is a list of numbers excluded from random code generation. Ex: 0,1 doesn't generate codes starting with 0 or 1 
   * `KEEP_TIME` is the number of minutes the document is kept before deletion. Default 12 hours
+  * `UPLOAD_LIMIT_NUM` is the max number of uploads in `UPLOAD_LIMIT_SEC` seconds
   * `/httprint/ppd` folder may contain printer's ppd file to use server side spooling
+
 
 Now you can **point your browser to [http://localhost:7777/](http://localhost:7777/)**
 
