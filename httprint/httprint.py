@@ -501,18 +501,18 @@ def serve():
             help='specify the SSL certificate to use for secure connections')
     define('ssl_key', default=os.path.join(os.path.dirname(__file__), 'ssl', 'httprint_key.pem'),
             help='specify the SSL private key to use for secure connections')
-    define('code-digits', default=os.environ.get("CODE_DIGITS", CODE_DIGITS), help='number of digits of the code', type=int)
+    define('code-digits', default=int(os.environ.get("CODE_DIGITS", CODE_DIGITS)), help='number of digits of the code', type=int)
     define('code-exclude-list', default=os.environ.get("CODE_EXCLUDE_LIST",""), help='list of codes starting with', type=str)
-    define('max-pages', default=os.environ.get("MAX_PAGES", MAX_PAGES), help='maximum number of pages to print', type=int)
+    define('max-pages', default=int(os.environ.get("MAX_PAGES", MAX_PAGES)), help='maximum number of pages to print', type=int)
     define('queue-dir', default=QUEUE_DIR, help='directory to store files before they are printed', type=str)
     define('ppd-dir', default=PPD_DIR, help='directory to store ppd files', type=str)
     define('pdf-only', default=True, help='only print PDF files', type=bool)
     define('check-pdf-pages', default=True, help='check that the number of pages of PDF files do not exeed --max-pages', type=bool)
     define('debug', default=False, help='run in debug mode', type=bool)
     define('tokenlist', default=os.environ.get("TOKEN_LIST",""), help='token list', type=str)
-    define('keep-time', default=os.environ.get("KEEP_TIME",KEEP_TIME), help='keep the document for x minutes', type=int)
-    define('upload-limit-num', default=os.environ.get("UPLOAD_LIMIT_NUM",UPLOAD_LIMIT_NUM), help='Max number of uploads in upload-limit-sec seconds', type=int)
-    define('upload-limit-sec', default=os.environ.get("UPLOAD_LIMIT_SEC",UPLOAD_LIMIT_SEC), help='Seconds for upload-limit-num', type=int)
+    define('keep-time', default=int(os.environ.get("KEEP_TIME",KEEP_TIME)), help='keep the document for x minutes', type=int)
+    define('upload-limit-num', default=int(os.environ.get("UPLOAD_LIMIT_NUM",UPLOAD_LIMIT_NUM)), help='Max number of uploads in upload-limit-sec seconds', type=int)
+    define('upload-limit-sec', default=int(os.environ.get("UPLOAD_LIMIT_SEC",UPLOAD_LIMIT_SEC)), help='Seconds for upload-limit-num', type=int)
 
     tornado.options.parse_command_line()
     
