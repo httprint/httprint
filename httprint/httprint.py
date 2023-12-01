@@ -449,7 +449,8 @@ class TemplateHandler(BaseHandler):
         page = 'index.html'
         if args and args[0]:
             page = args[0].strip('/')
-        arguments = self.arguments
+        # arguments = self.arguments
+        arguments = {"instance_name":self.cfg.instance_name, "max_pages":self.cfg.max_pages}
         self.render(page, **arguments)
 
 
@@ -513,6 +514,7 @@ def serve():
     define('keep-time', default=int(os.environ.get("KEEP_TIME",KEEP_TIME)), help='keep the document for x minutes', type=int)
     define('upload-limit-num', default=int(os.environ.get("UPLOAD_LIMIT_NUM",UPLOAD_LIMIT_NUM)), help='Max number of uploads in upload-limit-sec seconds', type=int)
     define('upload-limit-sec', default=int(os.environ.get("UPLOAD_LIMIT_SEC",UPLOAD_LIMIT_SEC)), help='Seconds for upload-limit-num', type=int)
+    define('instance-name', default=os.environ.get("INSTANCE_NAME","HTTPrint"), help='instance name', type=str)
 
     tornado.options.parse_command_line()
     

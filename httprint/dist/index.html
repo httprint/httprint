@@ -10,7 +10,7 @@
   <script src="/static/js/bootstrap.min.js"></script>
   <script src="/static/js/jquery.toast.min.js"></script>
   <script src="/static/js/httprint.js"></script>
-  <title>HTTPrint</title>
+  <title>{{ instance_name }}</title>
 </head>
 <body>
   <div class="container">
@@ -18,8 +18,8 @@
       <div class="col-sm">
         <div class="jumbotron jumbotron-fluid">
           <div class="container">
-            <h1 class="display-4">HTTPrint</h1>
-            <p class="lead">Upload and print a <strong>PDF file</strong>. The maximum number of pages that can be printed is <strong>10</strong>.</p>
+            <h1 class="display-4">{{ instance_name }}</h1>
+            <p class="lead">Upload and print a <strong>PDF file</strong>. The maximum number of pages that can be printed is <strong>{{ max_pages }}</strong>.</p>
             Instructions:
             <ol>
               <li>Upload a file, select the number of copies and click the "print" button</li>
@@ -35,7 +35,7 @@
         </div>
         <div class="form-group">
           <label for="copies">Number of copies</label>
-          <input id="copies" type="number" min="1" max="10" value="1" class="form-control">
+          <input id="copies" type="number" min="1" max="{{ max_pages }}" value="1" class="form-control">
         </div>
         <div class="form-group">
           <label for="sides">Sides</label>
