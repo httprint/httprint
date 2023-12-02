@@ -19,10 +19,7 @@ import os
 import re
 import glob
 import random
-import shutil
 import logging
-import subprocess
-import multiprocessing as mp
 
 from tornado.ioloop import IOLoop
 import tornado.httpserver
@@ -128,32 +125,6 @@ class BaseHandler(tornado.web.RequestHandler):
         self.set_status(status)
         self.write({'error': False, 'message': message})
 
-    def _run(self, cmd, fname, callback=None):
-        p = subprocess.Popen(cmd, close_fds=True)
-        p.communicate()
-        if callback:
-            callback(cmd, fname, p)
-
-    def _archive(self, cmd, fname, p):
-        if self.cfg.archive:
-            if not os.path.isdir(self.cfg.archive_dir):
-                os.makedirs(self.cfg.archive_dir)
-            for fn in glob.glob(fname + '*'):
-                shutil.move(fn, self.cfg.archive_dir)
-        for fn in glob.glob(fname + '*'):
-            try:
-                os.unlink(fn)
-            except Exception:
-                pass
-
-    def run_subprocess(self, cmd, fname, callback=None):
-        """Execute the given action.
-
-        :param cmd: the command to be run with its command line arguments
-        :type cmd: list
-        """
-        p = mp.Process(target=self._run, args=(cmd, fname, callback))
-        p.start()
 
     def search_document(self, code):
         # logger.info(self.request.arguments)
