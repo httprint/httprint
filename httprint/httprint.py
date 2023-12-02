@@ -287,9 +287,12 @@ class UploadHandler(BaseHandler):
     @gen.coroutine
     def post(self):
         if not self.request.files.get('file'):
-            self.build_error("no file uploaded")
+            self.build_error("No file uploaded")
             return
         
+        fileinfo = self.request.files['file'][0]
+        webFname = fileinfo['filename']
+
         #upload limit       
         for t in reversed(self.upload_limit_tlist):
             dtime = datetime.utcnow() - t
@@ -297,7 +300,7 @@ class UploadHandler(BaseHandler):
                 self.upload_limit_tlist.remove(t)
         
         if len(self.upload_limit_tlist) >= self.cfg.upload_limit_num:
-            self.build_error("Server busy. Retry later")
+            self.build_error(f"Server busy. Retry to upload {webFname} later")
             return
         else:
             self.upload_limit_tlist.append(datetime.utcnow())
@@ -334,10 +337,10 @@ class UploadHandler(BaseHandler):
             pass
 
         if copies > self.cfg.max_pages:
-            self.build_error('you have asked too many copies')
+            self.build_error('You have asked too many copies')
             return
-        fileinfo = self.request.files['file'][0]
-        webFname = fileinfo['filename']
+
+
         extension = ''
         try:
             extension = os.path.splitext(webFname)[1].lower()
@@ -380,11 +383,11 @@ class UploadHandler(BaseHandler):
                     pages = len(pypdf.PdfReader(f).pages)
 
                 if pages * copies > self.cfg.max_pages and self.cfg.check_pdf_pages and not failure:
-                    self.build_error('too many pages to print (%d)' % (pages * copies))
+                    self.build_error(f"{webFname} has too many pages ({(pages * copies)})")
                     failure = True
             except Exception:
                 if not failure:
-                    self.build_error('unable to get PDF information')
+                    self.build_error(f"Unable to get PDF information from {webFname}")
                     failure = True
                 pass
         if failure:
@@ -394,7 +397,7 @@ class UploadHandler(BaseHandler):
                 except Exception:
                     pass
             return
-        self.build_success("In order to print %s go to the printer and enter this code: %s" % (webFname, self.prettycode(code)))
+        self.build_success(f"In order to print {webFname} go to the printer and enter this code: {self.prettycode(code)}")
 
         #raw
         ppds = sorted(glob.glob(self.cfg.ppd_dir + "/*.ppd"))
