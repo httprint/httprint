@@ -31,6 +31,8 @@ services:
       - KEEP_TIME=60
       - UPLOAD_LIMIT_NUM=5
       - UPLOAD_LIMIT_SEC=30
+      - DOWNLOAD_LIMIT_NUM=5
+      - DOWNLOAD_LIMIT_SEC=30
       - INSTANCE_NAME=HTTPrint
       - MAX_PAGES=42
 

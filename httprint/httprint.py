@@ -135,6 +135,24 @@ class BaseHandler(tornado.web.RequestHandler):
             self.build_error("not allowed")
             return
         
+
+        #download limit       
+        for t in reversed(self.download_limit_tlist.get(token,[])):
+            dtime = datetime.utcnow() - t
+            if dtime.total_seconds() >= self.cfg.download_limit_sec:
+                self.download_limit_tlist[token].remove(t)
+        
+        l = self.download_limit_tlist.get(token,[])
+        if len(l) >= self.cfg.download_limit_num:
+            self.build_error(f"Server busy. Retry later")
+            return
+        else:            
+            l.append(datetime.utcnow())
+            self.download_limit_tlist[token] = l
+
+            print(self.download_limit_tlist)
+        
+
         if not code:
             self.build_error("empty code")
             return
@@ -488,6 +506,8 @@ def serve():
     define('keep-time', default=int(os.environ.get("KEEP_TIME",KEEP_TIME)), help='keep the document for x minutes', type=int)
     define('upload-limit-num', default=int(os.environ.get("UPLOAD_LIMIT_NUM",UPLOAD_LIMIT_NUM)), help='Max number of uploads in upload-limit-sec seconds', type=int)
     define('upload-limit-sec', default=int(os.environ.get("UPLOAD_LIMIT_SEC",UPLOAD_LIMIT_SEC)), help='Seconds for upload-limit-num', type=int)
+    define('download-limit-num', default=int(os.environ.get("DOWNLOAD_LIMIT_NUM",UPLOAD_LIMIT_NUM)), help='Max number of downloads in download-limit-sec seconds per printer', type=int)
+    define('download-limit-sec', default=int(os.environ.get("DOWNLOAD_LIMIT_SEC",UPLOAD_LIMIT_SEC)), help='Seconds for download-limit-num', type=int)
     define('instance-name', default=os.environ.get("INSTANCE_NAME","HTTPrint"), help='instance name', type=str)
 
     tornado.options.parse_command_line()
@@ -499,7 +519,7 @@ def serve():
     if os.path.isfile(options.ssl_key) and os.path.isfile(options.ssl_cert):
         ssl_options = dict(certfile=options.ssl_cert, keyfile=options.ssl_key)
 
-    init_params = dict(listen_port=options.port, logger=logger, ssl_options=ssl_options, cfg=options, upload_limit_tlist = [])
+    init_params = dict(listen_port=options.port, logger=logger, ssl_options=ssl_options, cfg=options, upload_limit_tlist = [], download_limit_tlist = {})
 
     _upload_path = r'upload/?'
     _download_path = r'download/(?P<code>\w+)'
