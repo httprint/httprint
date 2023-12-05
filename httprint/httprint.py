@@ -433,6 +433,13 @@ class UploadHandler(BaseHandler):
             # logger.info(cmd)
             os.system(cmd)
 
+class ServerInfoHandler(BaseHandler):
+    """Server info handler."""
+    @gen.coroutine
+    def get(self):
+        serverinfo = {key: self.cfg.as_dict().get(key,"") for key in ["instance-name", "code-digits", "max-pages", "keep-time"]}
+        self.build_success(serverinfo)
+
 class TemplateHandler(BaseHandler):
     """Handler for the template files in the / path."""
     @gen.coroutine
@@ -525,12 +532,14 @@ def serve():
     _download_path = r'download/(?P<code>\w+)'
     _info_path = r'info/(?P<code>\w+)'
     _infotest_path = r'infotest/(?P<code>\w+)'
+    _serverinfo_path = r'serverinfo/?'
 
     application = tornado.web.Application([
             (r'/api/%s' % _upload_path, UploadHandler, init_params),
             (r'/api/%s' % _download_path, DownloadHandler, init_params),
             (r'/api/%s' % _info_path, InfoHandler, init_params),
             (r'/api/%s' % _infotest_path, InfoBase64Handler, init_params),
+            (r'/api/%s' % _serverinfo_path, ServerInfoHandler, init_params),
             (r'/?(.*)', TemplateHandler, init_params),
         ],
         static_path=os.path.join(os.path.dirname(__file__), 'dist/static'),
