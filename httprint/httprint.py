@@ -186,7 +186,7 @@ class BaseHandler(tornado.web.RequestHandler):
         except Exception:
             pass
 
-        if printconf.get("random",False):
+        if strbool(printconf.get("random","")):
             fname = random.choice(fnamearr)
 
         try:
