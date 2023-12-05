@@ -39,8 +39,6 @@ import pytz
 
 QUEUE_DIR = 'queue'
 PPD_DIR = 'ppd'
-ARCHIVE = False
-ARCHIVE_DIR = 'archive'
 
 DEFAULT_COPIES = 1
 DEFAULT_SIDES = "two-sided-long-edge" #two-sided-long-edge, two-sided-short-edge, one-sided
