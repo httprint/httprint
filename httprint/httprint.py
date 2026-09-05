@@ -16,6 +16,8 @@ limitations under the License.
 """
 
 import os
+import subprocess
+import shlex
 import re
 import glob
 import random
@@ -356,20 +358,14 @@ class UploadHandler(BaseHandler):
             self.build_error('You have asked too many copies')
             return
 
-
-        extension = ''
-        try:
-            extension = os.path.splitext(webFname)[1].lower()
-        except Exception:
-            pass
-        if not extension=='.pdf':
-            extension = extension + ".pdf"
         if not os.path.isdir(self.cfg.queue_dir):
             os.makedirs(self.cfg.queue_dir)
+
         now = datetime.now().strftime('%Y%m%d%H%M%S')
         code = self.generateCode()
-        fname = '%s-%s%s' % (code, now, extension)
+        fname = f'{code}-{now}.pdf'
         pname = os.path.join(self.cfg.queue_dir, fname)
+
         try:
             with open(pname, 'wb') as fd:
                 fd.write(fileinfo['body'])
@@ -424,11 +420,13 @@ class UploadHandler(BaseHandler):
                 ppdstd = ppdstd[0].lower().split('"')[1].split(".ppd")[0]
             # logger.info("ppdstd: " + ppdstd)
 
-            rawname = pname + "." + ppdstd + ".raw"
+            pdfname = shlex.quote(pname) #sanitize filename adding escape char
+            rawname = pdfname + "." + ppdstd + ".raw"
             cmd = CONV_CMD.split(' ')
-            cmd = [x % {'in': pname, 'out': rawname, 'ppd': ppd, 'copies': copies, 'sides': sides, 'media': media} for x in cmd]
+            cmd = [x % {'in': pdfname, 'out': rawname, 'ppd': ppd, 'copies': copies, 'sides': sides, 'media': media} for x in cmd]
             cmd = " ".join(cmd)
             # logger.info(cmd)
+            # subprocess.call(cmd)
             os.system(cmd)
 
 class ServerInfoHandler(BaseHandler):

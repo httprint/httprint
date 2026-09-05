@@ -4,7 +4,7 @@ import os
 import glob
 import configparser
 import subprocess
-import signal
+import shlex
 
 DEFAULT_COPIES = 1
 DEFAULT_SIDES = "two-sided-long-edge" #two-sided-long-edge, two-sided-short-edge, one-sided
@@ -34,20 +34,21 @@ def main():
         print(files)
         print(glob.glob(os.path.dirname(os.path.realpath(__file__))))
         for fname in files:
-            rawname = fname + "." + ppdstd + ".raw"
+            pdfname = shlex.quote(fname) #sanitize filename adding escape char
+            rawname = pdfname + "." + ppdstd + ".raw"
             if not os.path.isfile(rawname):
                 print ("Converto " + os.path.basename(rawname))
 
                 #leggo la configurazione
                 config = configparser.ConfigParser()
-                name = "-".join(os.path.basename(fname).split("-")[1:])
+                name = "-".join(os.path.basename(pdfname).split("-")[1:])
                 copies = DEFAULT_COPIES
                 sides = DEFAULT_SIDES
                 media = DEFAULT_MEDIA
 
                 try:
-                    code = os.path.basename(fname).split("-")[0]
-                    config.read(os.path.dirname(fname) + "/" + code + '.info')
+                    code = os.path.basename(pdfname).split("-")[0]
+                    config.read(os.path.dirname(pdfname) + "/" + code + '.info')
                     printconf = config['print']
                     name = printconf.get('name', name)
                     copies = printconf.getint('copies', copies)
@@ -57,7 +58,7 @@ def main():
                     pass
 
                 try:
-                    config.read(fname + '.info')
+                    config.read(pdfname + '.info')
                     printconf = config['print']
                     name = printconf.get('name', name)
                     copies = printconf.getint('copies', copies)
@@ -68,9 +69,10 @@ def main():
 
                 print("Conf:",name, copies, sides, media)
 
+
                 #faccio partire la conversione
                 cmd = CONV_CMD.split(' ')
-                cmd = [x % {'in': fname, 'out': rawname, 'ppd': ppd, 'copies': copies, 'sides': sides, 'media': media} for x in cmd]
+                cmd = [x % {'in': pdfname, 'out': rawname, 'ppd': ppd, 'copies': copies, 'sides': sides, 'media': media} for x in cmd]
                 cmd = " ".join(cmd)
                 print (cmd)
                 os.system(cmd)
