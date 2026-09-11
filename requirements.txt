@@ -2,3 +2,6 @@ tornado
 pypdf
 APScheduler
 pytz
+filetype
+img2pdf
+pymupdf

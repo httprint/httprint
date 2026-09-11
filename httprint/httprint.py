@@ -34,6 +34,11 @@ import configparser
 import pypdf
 import base64
 import json
+import tempfile
+import uuid
+import filetype
+import img2pdf
+import pymupdf
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
@@ -56,6 +61,7 @@ KEEP_TIME = 720 #12h
 
 UPLOAD_LIMIT_NUM = 5
 UPLOAD_LIMIT_SEC = 30
+MAX_FILE_SIZE = 20 * 1024 * 1024
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -358,6 +364,78 @@ class UploadHandler(BaseHandler):
             self.build_error('You have asked too many copies')
             return
 
+        # check file size
+        if len(fileinfo['body']) > self.cfg.max_file_size:
+            self.build_error("Your file is too big")
+            return
+
+        # detect file type
+        kind = filetype.guess(fileinfo['body'])
+        if not kind:
+            self.build_error("File format unknown")
+            return
+
+        ext = kind.extension
+
+        # ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/webp", ""}
+        # if kind is None or kind.mime not in ALLOWED_MIME_TYPES:
+        #     self.build_error("File format not allowed")
+        #     return
+
+
+        # Salva il file su cartella temporanea
+        tname = os.path.join(tempfile.gettempdir(), f"httrpint_{uuid.uuid4().hex}.{ext}")
+        tnamepdf = f"{tname}.pdf"
+
+        try:
+            with open(tname, 'wb') as fd:
+                fd.write(fileinfo['body'])
+        except Exception as e:
+            self.build_error("error writing file %s: %s" % (tname, e))
+            return
+
+        
+
+        # converte il file
+        if ext in ["pdf"]:
+            try:
+                doc = pymupdf.open(tname)
+                doc.save(tnamepdf, garbage = 4, deflate = True)
+            except pymupdf.FileDataError:
+                os.unlink(tname)
+                self.build_error("PDF file is broken")
+                return
+
+        elif ext in ["jpg", "png", "webp", "tif"]:
+            a4_width = img2pdf.mm_to_pt(210)   # ~595.27 pt
+            a4_height = img2pdf.mm_to_pt(297)  # ~841.89 pt
+            border = img2pdf.mm_to_pt(5)
+
+            layout_fun = img2pdf.get_layout_fun(
+                (a4_width, a4_height),
+                fit=img2pdf.FitMode.into,
+                auto_orient = True,
+                border=(border, border, border, border)
+            )
+            try:
+                with open(tnamepdf, "wb") as f:
+                    f.write(img2pdf.convert(tname, layout_fun=layout_fun))
+            except Exception:
+                os.unlink(tname)
+                os.unlink(tnamepdf)
+                self.build_error("Can't convert image")
+                return
+                
+        else:
+            os.unlink(tname)
+            self.build_error(f"Can't convert this file type: {ext}")
+            return
+
+        os.unlink(tname)
+
+
+
+        #sposta il file e scrive la configurazione        
         if not os.path.isdir(self.cfg.queue_dir):
             os.makedirs(self.cfg.queue_dir)
 
@@ -366,12 +444,7 @@ class UploadHandler(BaseHandler):
         fname = f'{code}-{now}.pdf'
         pname = os.path.join(self.cfg.queue_dir, fname)
 
-        try:
-            with open(pname, 'wb') as fd:
-                fd.write(fileinfo['body'])
-        except Exception as e:
-            self.build_error("error writing file %s: %s" % (pname, e))
-            return
+        os.rename(tnamepdf, pname)
 
         config = configparser.ConfigParser()
         config['print'] = {}
@@ -388,6 +461,8 @@ class UploadHandler(BaseHandler):
         except Exception:
             pass
 
+
+        #fa i controlli
         failure = False
         if self.cfg.check_pdf_pages or self.cfg.pdf_only:
             try:
@@ -500,6 +575,7 @@ def serve():
     define('code-digits', default=int(os.environ.get("CODE_DIGITS", CODE_DIGITS)), help='number of digits of the code', type=int)
     define('code-exclude-list', default=os.environ.get("CODE_EXCLUDE_LIST",""), help='list of codes starting with', type=str)
     define('max-pages', default=int(os.environ.get("MAX_PAGES", MAX_PAGES)), help='maximum number of pages to print', type=int)
+    define('max-file-size', default=int(os.environ.get("MAX_FILE_SIZE",MAX_FILE_SIZE)), help='max file size', type=int)
     define('queue-dir', default=QUEUE_DIR, help='directory to store files before they are printed', type=str)
     define('ppd-dir', default=PPD_DIR, help='directory to store ppd files', type=str)
     define('pdf-only', default=True, help='only print PDF files', type=bool)
