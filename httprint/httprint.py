@@ -22,6 +22,7 @@ import re
 import glob
 import random
 import logging
+import shutil
 
 from tornado.ioloop import IOLoop
 import tornado.httpserver
@@ -384,7 +385,7 @@ class UploadHandler(BaseHandler):
 
 
         # Salva il file su cartella temporanea
-        tname = os.path.join(tempfile.gettempdir(), f"httrpint_{uuid.uuid4().hex}.{ext}")
+        tname = os.path.join(tempfile.gettempdir(), f"httprint{uuid.uuid4().hex}.{ext}")
         tnamepdf = f"{tname}.pdf"
 
         try:
@@ -444,7 +445,7 @@ class UploadHandler(BaseHandler):
         fname = f'{code}-{now}.pdf'
         pname = os.path.join(self.cfg.queue_dir, fname)
 
-        os.rename(tnamepdf, pname)
+        shutil.move(tnamepdf, pname)
 
         config = configparser.ConfigParser()
         config['print'] = {}
