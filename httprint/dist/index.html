@@ -2,73 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <link rel="stylesheet" type="text/css" href="/static/css/bootstrap.min.css">
-  <link rel="stylesheet" type="text/css" href="/static/css/jquery.toast.min.css">
-  <script src="/static/js/jquery-3.4.1.min.js"></script>
-  <script src="/static/js/bootstrap.min.js"></script>
-  <script src="/static/js/jquery.toast.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f3f1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/httprint.css">
   <script src="/static/js/httprint.js"></script>
   <title>{{ instance_name }}</title>
 </head>
 <body>
-  <div class="container">
-    <div class="row">
-      <div class="col-sm">
-        <div class="jumbotron jumbotron-fluid">
-          <div class="container">
-            <h1 class="display-4">{{ instance_name }}</h1>
-            <p class="lead">Upload and print a <strong>PDF file</strong>. The maximum number of pages that can be printed is <strong>{{ max_pages }}</strong>.</p>
-            Instructions:
-            <ol>
-              <li>Upload a file, select the number of copies and click the "print" button</li>
-              <li>Write down the code you will receive</li>
-              <li>head to the printer</li>
-              <li>insert the code in the touchpad</li>
-            </ol>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="upload-file">File to print</label>
-          <input id="upload-file" type="file" class="form-control-file">
-        </div>
-        <div class="form-group">
-          <label for="copies">Number of copies</label>
-          <input id="copies" type="number" min="1" max="{{ max_pages }}" value="1" class="form-control">
-        </div>
-        <div class="form-group">
-          <label for="sides">Sides</label>
-          <select id="sides"class="form-control">
-            <option selected>two-sided-long-edge</option>
-            <option>two-sided-short-edge</option>
-            <option>one-sided</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="media">Media</label>
-          <select id="media"class="form-control">
-            <option selected>A4</option>
-            <option>A3</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="color">Color</label>
-          <select id="color"class="form-control">
-            <option selected>False</option>
-            <option>True</option>
-          </select>
-        </div>
-        <button id="print-btn" class="btn-lg btn-primary">print</button>
-      </div>
+  <main class="app-shell">
+    <header class="topbar"><a class="brand" href="/" aria-label="{{ instance_name }} home"><span class="brand-mark" aria-hidden="true">+</span><span>{{ instance_name }}</span></a><a class="source-link" href="https://github.com/httprint/httprint">Open source</a></header>
+    <section class="message-panel" aria-live="polite"><div class="message-heading"><span>Activity</span><span id="message-count">0 messages</span></div><div id="message-log" class="message-log"><p class="empty-message">Your print responses will appear here.</p></div></section>
+    <section class="hero"><p class="eyebrow">Print desk</p><h1>Send it <em>to print.</em></h1></section>
+    <div class="work-area">
+      <section class="panel upload-panel"><div class="panel-heading"><span class="step">01</span><h2>File</h2></div><label class="dropzone" for="upload-file"><span class="upload-icon" aria-hidden="true">↑</span><strong id="file-label">Drop a file here</strong><span>or <u>choose a file</u></span><input id="upload-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff"></label></section>
+      <section class="panel settings-panel"><div class="panel-heading"><span class="step">02</span><h2>Settings</h2></div><div class="settings-grid"><label class="field" for="copies">Copies<input id="copies" type="number" min="1" max="{{ max_pages }}" value="1"></label><label class="field" for="media">Paper<select id="media"><option selected>A4</option><option>A3</option></select></label><label class="field" for="sides">Sides<select id="sides"><option selected>two-sided-long-edge</option><option>two-sided-short-edge</option><option>one-sided</option></select></label><label class="field" for="color">Color<select id="color"><option selected>False</option><option>True</option></select></label></div><button id="print-btn" type="button"><span>Send to printer</span><span aria-hidden="true">↗</span></button></section>
     </div>
-  </div>
-  <footer class="footer mt-auto py-3">
-    <div class="container">
-      <span class="text-muted">
-          HTTPrint <a href="https://github.com/httprint/httprint">https://github.com/httprint/httprint</a>
-      </span>
-    </div>
-  </footer>
+    <p class="usage-note">Upload a file <span>·</span> choose settings <span>·</span> send to printer <span>·</span> maximum {{ max_pages }} pages</p>
+  </main>
 </body>
 </html>
