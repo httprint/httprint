@@ -40,6 +40,7 @@ import uuid
 import filetype
 import img2pdf
 import pymupdf
+from PIL import Image
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
@@ -66,6 +67,13 @@ MAX_FILE_SIZE = 20 * 1024 * 1024
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+def unlink_if_exists(filename):
+    try:
+        os.unlink(filename)
+    except FileNotFoundError:
+        pass
 
 
 class HTTPrintBaseException(Exception):
@@ -238,10 +246,7 @@ class DownloadHandler(BaseHandler):
 
         if not strbool(printconf["keep"]):
             for fn in glob.glob(fname + '*'):
-                try:
-                    os.unlink(fn)
-                except Exception:
-                    pass
+                unlink_if_exists(fn)
 
 
 class InfoHandler(BaseHandler):
@@ -274,10 +279,7 @@ class InfoBase64Handler(BaseHandler):
 
         if not strbool(printconf["keep"]):
             for fn in glob.glob(fname + '*'):
-                try:
-                    os.unlink(fn)
-                except Exception:
-                    pass
+                unlink_if_exists(fn)
 
 
 class UploadHandler(BaseHandler):
@@ -403,7 +405,7 @@ class UploadHandler(BaseHandler):
                 doc = pymupdf.open(tname)
                 doc.save(tnamepdf, garbage = 4, deflate = True)
             except pymupdf.FileDataError:
-                os.unlink(tname)
+                unlink_if_exists(tname)
                 self.build_error("PDF file is broken")
                 return
 
@@ -418,21 +420,37 @@ class UploadHandler(BaseHandler):
                 auto_orient = True,
                 border=(border, border, border, border)
             )
+            conversion_input = tname
+            normalized_tname = None
             try:
+                if ext == "webp":
+                    normalized_tname = f"{tname}.png"
+                    with Image.open(tname) as image:
+                        image.seek(0)
+                        rgba = image.convert("RGBA")
+                        background = Image.new("RGB", rgba.size, "white")
+                        background.paste(rgba, mask=rgba.getchannel("A"))
+                        background.save(normalized_tname, format="PNG")
+                    conversion_input = normalized_tname
+
                 with open(tnamepdf, "wb") as f:
-                    f.write(img2pdf.convert(tname, layout_fun=layout_fun))
-            except Exception:
-                os.unlink(tname)
-                os.unlink(tnamepdf)
+                    f.write(img2pdf.convert(conversion_input, layout_fun=layout_fun))
+            except Exception as e:
+                for temporary_file in (tname, normalized_tname, tnamepdf):
+                    if temporary_file:
+                        unlink_if_exists(temporary_file)
                 self.build_error("Can't convert image")
                 return
+            finally:
+                if normalized_tname:
+                    unlink_if_exists(normalized_tname)
                 
         else:
-            os.unlink(tname)
+            unlink_if_exists(tname)
             self.build_error(f"Can't convert this file type: {ext}")
             return
 
-        os.unlink(tname)
+        unlink_if_exists(tname)
 
 
 
@@ -480,10 +498,7 @@ class UploadHandler(BaseHandler):
                 pass
         if failure:
             for fn in glob.glob(pname + '*'):
-                try:
-                    os.unlink(fn)
-                except Exception:
-                    pass
+                unlink_if_exists(fn)
             return
         self.build_success(f"In order to print {webFname} go to the printer and enter this code: {self.prettycode(code)}")
 
@@ -556,10 +571,7 @@ def clean_expired(qdir, ktime):
         logger.info(f"Document {os.path.basename(fname)} expired")
 
         for fn in glob.glob(fname + '*'):
-            try:
-                os.unlink(fn)
-            except Exception:
-                pass
+            unlink_if_exists(fn)
 
 
 

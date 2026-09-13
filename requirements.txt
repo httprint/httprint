@@ -5,3 +5,4 @@ pytz
 filetype
 img2pdf
 pymupdf
+Pillow
